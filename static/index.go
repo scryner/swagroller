@@ -9,14 +9,16 @@ type spec struct {
 	Title  string
 	Body   string
 	IsServ bool
+	Port   int
 }
 
-func MakeIndexHTML(title string, jsonBody []byte, w io.Writer, isServ bool) error {
+func MakeIndexHTML(title string, jsonBody []byte, w io.Writer, isServ bool, port int) error {
 	tmplIndex := template.Must(template.New("index.html").Parse(indexHTML))
 	return tmplIndex.Execute(w, spec{
 		Title:  title,
 		Body:   string(jsonBody),
 		IsServ: isServ,
+		Port:   port,
 	})
 }
 
@@ -53,7 +55,7 @@ var indexHTML = `<!-- HTML for static distribution bundle build -->
   </style>
 
 {{if .IsServ}}  <script>
-    const ws = new WebSocket("ws://localhost:8000/websocket");
+    const ws = new WebSocket("ws://localhost:{{.Port}}/websocket");
 
     ws.onmessage = event => {
         const data = JSON.parse(event.data);

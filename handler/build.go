@@ -1,31 +1,23 @@
-package main
+package handler
 
 import (
 	"fmt"
 	"io/ioutil"
 	"os"
 
-	"github.com/scryner/swagroller/static"
 	"github.com/ghodss/yaml"
+	"github.com/scryner/swagroller/static"
 )
 
-func doBuild(usage func(), inputFilepath, outputDir string) {
-	// check arguments
-	if inputFilepath == "" || outputDir == "" {
-		usage()
-		os.Exit(1)
-	}
-
+func DoBuild(inputFilepath, outputDir string) error {
 	// try to open input file
 	inputFinfo, err := os.Stat(inputFilepath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to stat input file '%s': %v\n", inputFilepath, err)
-		os.Exit(1)
+		return fmt.Errorf("failed to stat input file '%s': %v", inputFilepath, err)
 	}
 
 	if inputFinfo.IsDir() {
-		fmt.Fprintf(os.Stderr, "input path '%s' is directory\n", inputFilepath)
-		os.Exit(1)
+		return fmt.Errorf("input path '%s' is directory", inputFilepath)
 	}
 
 	// try to open output directory
@@ -35,34 +27,31 @@ func doBuild(usage func(), inputFilepath, outputDir string) {
 			// try to make directory
 			err = os.Mkdir(outputDir, 0755)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "failed to make directory '%s': %v\n", outputDir, err)
-				os.Exit(1)
+				return fmt.Errorf("failed to make directory '%s': %v\n", outputDir, err)
 			}
 
 		} else {
-			fmt.Fprintf(os.Stderr, "failed to stat output path '%s': %v\n", outputDir, err)
-			os.Exit(1)
+			return fmt.Errorf("failed to stat output path '%s': %v", outputDir, err)
 
 		}
 	} else {
 		if !outputFinfo.IsDir() {
-			fmt.Fprintf(os.Stderr, "output path '%s' is not directory\n", outputDir)
-			os.Exit(1)
+			return fmt.Errorf("output path '%s' is not directory", outputDir)
 		}
 	}
 
 	// try to read yaml file
 	title, specJSON, err := readYAMLtoJSON(inputFilepath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to convert to json: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to convert to json: %v", err)
 	}
 
 	err = static.Build(title, specJSON, outputDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to build: %v", err)
 	}
+
+	return nil
 }
 
 func readYAMLtoJSON(inputFilepath string) (string, []byte, error) {

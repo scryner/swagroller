@@ -31,7 +31,7 @@ func Build(title string, jsonBody []byte, outputDir string) error {
 	}
 	defer indexF.Close()
 
-	err = MakeIndexHTML(title, jsonBody, indexF, false)
+	err = MakeIndexHTML(title, jsonBody, indexF, false, 0)
 	if err != nil {
 		return fmt.Errorf("failed to make 'index.html': %v", err)
 	}

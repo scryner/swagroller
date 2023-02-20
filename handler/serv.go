@@ -1,31 +1,25 @@
-package main
+package handler
 
 import (
 	"bytes"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"github.com/pkg/browser"
 	"log"
 	"math/rand"
 	"net/http"
-	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/scryner/swagroller/static"
 )
 
-func doServer(usage func(), inputFilepath string, port int) {
-	// check file existed
-	if inputFilepath == "" {
-		usage()
-		os.Exit(1)
-	}
-
-	err := refreshIndex(inputFilepath)
+func DoServer(inputFilepath string, port int, openBrowser bool) error {
+	err := refreshIndex(inputFilepath, port)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build index.html: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to build index.html: %v", err)
 	}
 
 	// make websockets to refresh web browser when contents are updated
@@ -34,16 +28,14 @@ func doServer(usage func(), inputFilepath string, port int) {
 	// start watcher
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to make file notifier: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to make file notifier: %v", err)
 	}
 
 	baseDir, filename := filepath.Split(inputFilepath)
 
 	err = watcher.Add(baseDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to add dir to notify: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to add dir to notify: %v", err)
 	}
 
 	go func() {
@@ -57,7 +49,7 @@ func doServer(usage func(), inputFilepath string, port int) {
 				if ev.Op&fsnotify.Create == fsnotify.Create ||
 					ev.Op&fsnotify.Write == fsnotify.Write {
 
-					if err := refreshIndex(inputFilepath); err != nil {
+					if err := refreshIndex(inputFilepath, port); err != nil {
 						log.Println("fsnotify refresh:", err)
 					} else {
 						log.Println("fsnotify: refresh 'index.html' is completed")
@@ -80,10 +72,21 @@ func doServer(usage func(), inputFilepath string, port int) {
 
 	http.Handle("/", http.FileServer(static.FS(false)))
 	http.Handle("/websocket", handleWebSocket(ws))
-	log.Fatal(http.ListenAndServe(addr, nil))
+
+	if openBrowser {
+		go func() {
+			url := fmt.Sprintf("http://localhost:%d", port)
+
+			// sleep while to start server
+			time.Sleep(time.Millisecond * 200)
+			_ = browser.OpenURL(url)
+		}()
+	}
+
+	return http.ListenAndServe(addr, nil)
 }
 
-func refreshIndex(inputFilepath string) error {
+func refreshIndex(inputFilepath string, port int) error {
 	title, jsonb, err := readYAMLtoJSON(inputFilepath)
 	if err != nil {
 		return err
@@ -91,7 +94,7 @@ func refreshIndex(inputFilepath string) error {
 
 	// make index.html
 	buf := new(bytes.Buffer)
-	err = static.MakeIndexHTML(title, jsonb, buf, true)
+	err = static.MakeIndexHTML(title, jsonb, buf, true, port)
 	if err != nil {
 		return fmt.Errorf("failed to make index.html: %v", err)
 	}
