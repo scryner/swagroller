@@ -6,15 +6,17 @@ import (
 )
 
 type spec struct {
-	Title string
-	Body string
+	Title  string
+	Body   string
+	IsServ bool
 }
 
-func MakeIndexHTML(title string, jsonBody []byte, w io.Writer) error {
+func MakeIndexHTML(title string, jsonBody []byte, w io.Writer, isServ bool) error {
 	tmplIndex := template.Must(template.New("index.html").Parse(indexHTML))
 	return tmplIndex.Execute(w, spec{
-		Title: title,
-		Body: string(jsonBody),
+		Title:  title,
+		Body:   string(jsonBody),
+		IsServ: isServ,
 	})
 }
 
@@ -49,6 +51,21 @@ var indexHTML = `<!-- HTML for static distribution bundle build -->
 
     .swagger-ui .topbar { display: none }
   </style>
+
+{{if .IsServ}}  <script>
+    const ws = new WebSocket("ws://localhost:8000/websocket");
+
+    ws.onmessage = event => {
+        const data = JSON.parse(event.data);
+        console.log("received data:", data);
+		
+        const command = data.command;
+        if (command === "UPDATE") {
+           location.reload();
+        }
+    }
+  </script>
+{{end}}
 </head> <body>
 
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="position:absolute;width:0;height:0">
