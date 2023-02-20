@@ -12,9 +12,9 @@ $ go get github.com/scryner/swagroller
 
 You can also clone the repository and build the binary from source:
 ```shell
-git clone https://github.com/scryner/swagroller.git
-cd swagroller
-go build
+$ git clone https://github.com/scryner/swagroller.git
+$ cd swagroller
+$ go build
 ```
 
 ## Usage
